@@ -1,0 +1,22 @@
+#cloud-config
+users:
+  - name: student
+    groups: sudo
+    shell: /bin/bash
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    ssh_authorized_keys:
+      - ${student_ssh_key}
+  - name: ansible
+    groups: sudo
+    shell: /bin/bash
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    ssh_authorized_keys:
+      - ${ansible_ssh_key}
+
+package_update: true
+packages:
+  - python3
+  - python3-pip
+
+runcmd:
+  - echo "cloud-init done" > /tmp/cloud-init-done
