@@ -1,0 +1,10 @@
+[Unit]
+Description=mywebapp socket
+
+[Socket]
+ListenStream=/run/mywebapp.sock
+SocketUser=app
+SocketMode=0660
+
+[Install]
+WantedBy=sockets.target

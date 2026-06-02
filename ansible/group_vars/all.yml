@@ -1,0 +1,6 @@
+db_name: mywebapp
+db_user: mywebapp
+db_password: SecurePass123!
+app_port: 5000
+app_dir: /opt/mywebapp
+gradebook_n: 4

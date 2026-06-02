@@ -1,0 +1,28 @@
+[Unit]
+Description=My Web App (Task Tracker)
+Requires=mywebapp.socket
+After=network.target
+
+[Service]
+Type=simple
+User=app
+WorkingDirectory={{ app_dir }}
+ExecStartPre={{ app_dir }}/venv/bin/python {{ app_dir }}/migrate.py \
+    --db-host {{ db_host }} \
+    --db-port 3306 \
+    --db-user {{ db_user }} \
+    --db-password {{ db_password }} \
+    --db-name {{ db_name }}
+ExecStart={{ app_dir }}/venv/bin/gunicorn \
+    --workers 1 \
+    --bind unix:/run/mywebapp.sock \
+    app:app
+Environment=DB_HOST={{ db_host }}
+Environment=DB_PORT=3306
+Environment=DB_USER={{ db_user }}
+Environment=DB_PASSWORD={{ db_password }}
+Environment=DB_NAME={{ db_name }}
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,49 @@
+- name: Install MariaDB
+  ansible.builtin.apt:
+    name:
+      - mariadb-server
+      - python3-pymysql
+    state: present
+
+- name: Start and enable MariaDB
+  ansible.builtin.systemd:
+    name: mariadb
+    state: started
+    enabled: true
+
+- name: Create database
+  community.mysql.mysql_db:
+    name: "{{ db_name }}"
+    state: present
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+
+- name: Create database user
+  community.mysql.mysql_user:
+    name: "{{ db_user }}"
+    password: "{{ db_password }}"
+    priv: "{{ db_name }}.*:ALL"
+    host: "{{ worker_ip }}"
+    state: present
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+
+- name: Configure MariaDB to listen on all interfaces
+  ansible.builtin.template:
+    src: mariadb.conf.j2
+    dest: /etc/mysql/mariadb.conf.d/99-custom.cnf
+    mode: '0644'
+  notify: Restart MariaDB
+
+- name: Configure firewall — allow MariaDB only from worker
+  ansible.builtin.iptables:
+    chain: INPUT
+    protocol: tcp
+    destination_port: "3306"
+    source: "{{ worker_ip }}"
+    jump: ACCEPT
+
+- name: Configure firewall — block MariaDB from outside
+  ansible.builtin.iptables:
+    chain: INPUT
+    protocol: tcp
+    destination_port: "3306"
+    jump: DROP

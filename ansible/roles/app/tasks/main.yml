@@ -1,0 +1,94 @@
+- name: Install packages
+  ansible.builtin.apt:
+    name:
+      - python3
+      - python3-pip
+      - python3-venv
+      - nginx
+    state: present
+
+- name: Create app user
+  ansible.builtin.user:
+    name: app
+    system: true
+    shell: /usr/sbin/nologin
+
+- name: Create operator user
+  ansible.builtin.user:
+    name: operator
+    shell: /bin/bash
+    password: "{{ '12345678' | password_hash('sha512') }}"
+    password_expire_min: -1
+
+- name: Add www-data to app group
+  ansible.builtin.user:
+    name: www-data
+    groups: app
+    append: true
+
+- name: Configure sudo for operator
+  ansible.builtin.copy:
+    content: |
+      operator ALL=(ALL) NOPASSWD: \
+          /bin/systemctl start mywebapp, \
+          /bin/systemctl stop mywebapp, \
+          /bin/systemctl restart mywebapp, \
+          /bin/systemctl status mywebapp, \
+          /bin/systemctl reload nginx
+    dest: /etc/sudoers.d/operator
+    mode: '0440'
+    validate: visudo -cf %s
+
+- name: Create app directory
+  ansible.builtin.file:
+    path: "{{ app_dir }}"
+    state: directory
+    owner: app
+    group: app
+    mode: '0755'
+
+- name: Copy app files
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../app/"
+    dest: "{{ app_dir }}/"
+    owner: app
+    group: app
+    mode: '0644'
+
+- name: Create virtualenv and install dependencies
+  ansible.builtin.pip:
+    requirements: "{{ app_dir }}/requirements.txt"
+    virtualenv: "{{ app_dir }}/venv"
+    virtualenv_command: python3 -m venv
+
+- name: Set app directory ownership
+  ansible.builtin.file:
+    path: "{{ app_dir }}"
+    owner: app
+    group: app
+    recurse: true
+
+- name: Deploy systemd socket
+  ansible.builtin.template:
+    src: mywebapp.socket.j2
+    dest: /etc/systemd/system/mywebapp.socket
+    mode: '0644'
+  notify: Reload systemd
+
+- name: Deploy systemd service
+  ansible.builtin.template:
+    src: mywebapp.service.j2
+    dest: /etc/systemd/system/mywebapp.service
+    mode: '0644'
+  notify: Reload systemd
+
+- name: Enable and start mywebapp socket
+  ansible.builtin.systemd:
+    name: mywebapp.socket
+    state: started
+    enabled: true
+
+- name: Enable mywebapp service
+  ansible.builtin.systemd:
+    name: mywebapp
+    enabled: true

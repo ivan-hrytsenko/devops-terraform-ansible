@@ -1,0 +1,20 @@
+- name: Update apt cache
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Create teacher user
+  ansible.builtin.user:
+    name: teacher
+    groups: sudo
+    shell: /bin/bash
+    password: "{{ '12345678' | password_hash('sha512') }}"
+    password_expire_min: -1
+
+- name: Create gradebook file
+  ansible.builtin.copy:
+    content: "{{ gradebook_n }}\n"
+    dest: /home/student/gradebook
+    owner: student
+    group: student
+    mode: '0644'
